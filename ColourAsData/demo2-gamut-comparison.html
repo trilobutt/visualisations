@@ -173,6 +173,53 @@ function nmToRGB(nm) {
   return [Math.round(255*r*f), Math.round(255*g*f), Math.round(255*b*f)];
 }
 
+function xyzToLinearSrgb(X, Y, Z) {
+  return [
+     3.2406*X - 1.5372*Y - 0.4986*Z,
+    -0.9689*X + 1.8758*Y + 0.0415*Z,
+     0.0557*X - 0.2040*Y + 1.0570*Z
+  ];
+}
+
+function srgbGamma(v) {
+  return v <= 0 ? 0 : v >= 1 ? 1 : v <= 0.0031308 ? 12.92*v : 1.055*Math.pow(v, 1/2.4) - 0.055;
+}
+
+function insideLocus(x, y) {
+  let inside = false;
+  for (let i = 0, j = LOCUS.length-1; i < LOCUS.length; j = i++) {
+    const xi = LOCUS[i].x, yi = LOCUS[i].y;
+    const xj = LOCUS[j].x, yj = LOCUS[j].y;
+    if (((yi > y) !== (yj > y)) && x < (xj-xi)*(y-yi)/(yj-yi)+xi) inside = !inside;
+  }
+  return inside;
+}
+
+function fillChromaticityDiagram(ctx, bounds, p, pw, ph, dpr) {
+  const W = Math.ceil(pw * dpr), H = Math.ceil(ph * dpr);
+  const imgData = ctx.createImageData(W, H);
+  const d = imgData.data;
+  for (let py = 0; py < H; py++) {
+    const cy = bounds.yMax - (py / H) * (bounds.yMax - bounds.yMin);
+    if (cy <= 0) continue;
+    for (let px = 0; px < W; px++) {
+      const cx = bounds.xMin + (px / W) * (bounds.xMax - bounds.xMin);
+      if (!insideLocus(cx, cy)) continue;
+      const X = cx / cy, Z = (1 - cx - cy) / cy;
+      let [r, g, b] = xyzToLinearSrgb(X, 1, Z);
+      const mx = Math.max(r, g, b);
+      if (mx <= 0) continue;
+      r /= mx; g /= mx; b /= mx;
+      const idx = (py * W + px) * 4;
+      d[idx]   = Math.round(srgbGamma(r > 0 ? r : 0) * 255);
+      d[idx+1] = Math.round(srgbGamma(g > 0 ? g : 0) * 255);
+      d[idx+2] = Math.round(srgbGamma(b > 0 ? b : 0) * 255);
+      d[idx+3] = 255;
+    }
+  }
+  ctx.putImageData(imgData, Math.round(p.l * dpr), Math.round(p.t * dpr));
+}
+
 let currentGamut = 'srgb';
 let animFrame = null;
 
@@ -216,17 +263,7 @@ function drawDiagram(gamutKey) {
     ctx.beginPath(); ctx.moveTo(p.l, y); ctx.lineTo(p.l + pw, y); ctx.stroke();
   }
 
-  // Fill horseshoe interior
-  ctx.beginPath();
-  LOCUS.forEach((pt, i) => {
-    const [px, py] = toPx(pt.x, pt.y);
-    if (i === 0) ctx.moveTo(px, py); else ctx.lineTo(px, py);
-  });
-  const [lx, ly] = toPx(LOCUS[0].x, LOCUS[0].y);
-  ctx.lineTo(lx, ly);
-  ctx.closePath();
-  ctx.fillStyle = '#111118';
-  ctx.fill();
+  fillChromaticityDiagram(ctx, bounds, p, pw, ph, dpr);
 
   // Spectral locus — rainbow stroke
   for (let i = 0; i < LOCUS.length - 1; i++) {
@@ -258,7 +295,7 @@ function drawDiagram(gamutKey) {
     // Triangle fill
     ctx.beginPath();
     ctx.moveTo(rx, ry); ctx.lineTo(gx, gy); ctx.lineTo(bx, by); ctx.closePath();
-    ctx.fillStyle = hexToRgba(g.color, 0.06);
+    ctx.fillStyle = hexToRgba(g.color, 0.12);
     ctx.fill();
     ctx.strokeStyle = g.color;
     ctx.lineWidth = 1.5;
@@ -266,7 +303,7 @@ function drawDiagram(gamutKey) {
 
     // Primary dots
     [[rx, ry, 'R'], [gx, gy, 'G'], [bx, by, 'B']].forEach(([dx, dy, lbl]) => {
-      ctx.fillStyle = '#0c0c0f';
+      ctx.fillStyle = 'rgba(12,12,15,0.85)';
       ctx.beginPath(); ctx.arc(dx, dy, 4, 0, Math.PI*2); ctx.fill();
       ctx.strokeStyle = g.color; ctx.lineWidth = 1.5;
       ctx.beginPath(); ctx.arc(dx, dy, 4, 0, Math.PI*2); ctx.stroke();
@@ -354,7 +391,7 @@ function selectGamut(key) {
   });
   const callout = document.getElementById('gamutCallout');
   if (key === 'all') {
-    callout.innerHTML = 'sRGB sits inside P3, which sits inside Rec.2020. All three share the same D65 white point. The triangles' corners (the primaries) are physically realisable only for Rec.2020; sRGB primaries correspond to points on or near common display phosphors.';
+    callout.innerHTML = 'sRGB sits inside P3, which sits inside Rec.2020. All three share the same D65 white point. The triangles\' corners (the primaries) are physically realisable only for Rec.2020; sRGB primaries correspond to points on or near common display phosphors.';
   } else {
     callout.innerHTML = GAMUTS[key].note;
   }
