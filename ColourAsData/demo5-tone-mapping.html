@@ -14,8 +14,8 @@ body {
   padding: 20px 24px 16px;
   min-height: 100vh;
 }
-.tag { font-size: 9px; letter-spacing: 0.2em; text-transform: uppercase; color: #404060; margin-bottom: 6px; }
-.heading { font-size: 15px; font-weight: 400; color: #b0b0c0; margin-bottom: 14px; }
+.tag { font-size: 9px; letter-spacing: 0.2em; text-transform: uppercase; color: #606070; margin-bottom: 6px; }
+.heading { font-size: 16px; font-weight: 400; color: #c8c8d8; margin-bottom: 14px; }
 
 .layout { display: flex; gap: 14px; align-items: flex-start; margin-bottom: 14px; }
 .curve-col { flex: 1; min-width: 0; }
@@ -33,7 +33,7 @@ canvas#toneCanvas {
 .ctrl-label { font-size: 9px; letter-spacing: 0.1em; text-transform: uppercase; color: #404060; min-width: 72px; }
 input[type=range] {
   -webkit-appearance: none;
-  flex: 1; height: 2px; background: #232333; border-radius: 1px; outline: none; cursor: pointer;
+  flex: 1; height: 2px; background: #26264a; border-radius: 1px; outline: none; cursor: pointer;
 }
 input[type=range]::-webkit-slider-thumb {
   -webkit-appearance: none; width: 13px; height: 13px; border-radius: 50%;
@@ -62,7 +62,7 @@ canvas.strip { display: block; width: 100%; height: 100%; }
 
 .tick-row {
   display: flex; justify-content: space-between;
-  font-size: 8px; color: #303050; padding: 0 2px;
+  font-size: 9px; color: #404060; padding: 0 2px;
   margin-bottom: 10px;
 }
 
@@ -82,8 +82,9 @@ canvas.strip { display: block; width: 100%; height: 100%; }
 .rd-val { font-size: 15px; font-variant-numeric: tabular-nums; }
 
 .callout {
-  background: rgba(61,255,160,0.03); border: 1px solid rgba(61,255,160,0.10);
-  border-radius: 3px; padding: 10px 14px; font-size: 10px; color: #606080; line-height: 1.7;
+  background: rgba(61,255,160,0.05); border: 1px solid rgba(61,255,160,0.08);
+  border-left: 3px solid rgba(61,255,160,0.40);
+  border-radius: 3px; padding: 10px 14px; font-size: 10px; color: #7878a0; line-height: 1.7;
 }
 .callout strong { color: #3dffa0; }
 
@@ -231,7 +232,7 @@ function drawCurve(shoulderPct, linPct, sceneVal) {
   ctx.beginPath(); ctx.moveTo(ceilX, p.t); ctx.lineTo(ceilX, p.t+ph); ctx.stroke();
   ctx.setLineDash([]);
   ctx.fillStyle = '#2a2a4a';
-  ctx.font = '8px IBM Plex Mono,monospace';
+  ctx.font = '9px IBM Plex Mono,monospace';
   ctx.textAlign = 'left';
   ctx.fillText('display ceiling', ceilX+3, p.t+10);
 
@@ -287,7 +288,7 @@ function drawCurve(shoulderPct, linPct, sceneVal) {
   ctx.setLineDash([]);
 
   // Y axis labels
-  ctx.font = '9px IBM Plex Mono,monospace'; ctx.textAlign='right'; ctx.fillStyle='#404060';
+  ctx.font = '10px IBM Plex Mono,monospace'; ctx.textAlign='right'; ctx.fillStyle='#404060';
   for (let i=0;i<=4;i++) {
     ctx.fillText((i*25)+'%', p.l-5, p.t+ph-ph*i/4+3);
   }

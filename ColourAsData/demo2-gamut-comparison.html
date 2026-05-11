@@ -14,8 +14,8 @@ body {
   padding: 20px 24px 16px;
   min-height: 100vh;
 }
-.tag { font-size: 9px; letter-spacing: 0.2em; text-transform: uppercase; color: #404060; margin-bottom: 6px; }
-.heading { font-size: 15px; font-weight: 400; color: #b0b0c0; margin-bottom: 14px; line-height: 1.4; }
+.tag { font-size: 9px; letter-spacing: 0.2em; text-transform: uppercase; color: #606070; margin-bottom: 6px; }
+.heading { font-size: 16px; font-weight: 400; color: #c8c8d8; margin-bottom: 14px; line-height: 1.4; }
 
 .layout { display: flex; gap: 16px; align-items: flex-start; }
 .canvas-col { flex: 1; min-width: 0; }
@@ -57,12 +57,13 @@ button .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--c);
 .p-coord { color: #9090b0; font-variant-numeric: tabular-nums; }
 
 .callout {
-  background: rgba(61,255,160,0.03);
-  border: 1px solid rgba(61,255,160,0.10);
+  background: rgba(61,255,160,0.05);
+  border: 1px solid rgba(61,255,160,0.08);
+  border-left: 3px solid rgba(61,255,160,0.40);
   border-radius: 3px;
   padding: 9px 12px;
-  font-size: 9px;
-  color: #606080;
+  font-size: 10px;
+  color: #7878a0;
   line-height: 1.7;
   margin-top: 10px;
 }
@@ -319,7 +320,7 @@ function drawDiagram(gamutKey) {
 
   // Axis labels
   ctx.fillStyle = '#303050';
-  ctx.font = '9px IBM Plex Mono, monospace';
+  ctx.font = '10px IBM Plex Mono, monospace';
   ctx.textAlign = 'center';
   for (let i = 0; i <= 4; i++) {
     ctx.fillText((i * 0.2).toFixed(1), p.l + pw * i / 4, H - 6);
@@ -338,7 +339,7 @@ function drawDiagram(gamutKey) {
 
   // Wavelength labels on locus
   const labelPts = [460, 500, 520, 560, 600, 640];
-  ctx.font = '8px IBM Plex Mono, monospace';
+  ctx.font = '9px IBM Plex Mono, monospace';
   LOCUS.forEach(pt => {
     if (labelPts.includes(pt.nm)) {
       const [lx, ly] = toPx(pt.x, pt.y);

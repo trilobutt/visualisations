@@ -14,8 +14,8 @@ body {
   padding: 20px 24px 16px;
   min-height: 100vh;
 }
-.tag { font-size: 9px; letter-spacing: 0.2em; text-transform: uppercase; color: #404060; margin-bottom: 6px; }
-.heading { font-size: 15px; font-weight: 400; color: #b0b0c0; margin-bottom: 18px; }
+.tag { font-size: 9px; letter-spacing: 0.2em; text-transform: uppercase; color: #606070; margin-bottom: 6px; }
+.heading { font-size: 16px; font-weight: 400; color: #c8c8d8; margin-bottom: 18px; }
 
 .pipeline {
   display: flex;
@@ -65,7 +65,7 @@ body {
 .connector {
   width: 20px;
   height: 1px;
-  background: #282838;
+  background: #353550;
   flex-shrink: 0;
   position: relative;
 }
@@ -75,7 +75,7 @@ body {
   right: -4px;
   top: -3px;
   border: 4px solid transparent;
-  border-left-color: #282838;
+  border-left-color: #353550;
 }
 
 .detail-panel {
@@ -130,8 +130,9 @@ canvas.vis { display: block; width: 100%; height: 100%; }
 }
 
 .callout {
-  background: rgba(61,255,160,0.03); border: 1px solid rgba(61,255,160,0.10);
-  border-radius: 3px; padding: 10px 14px; font-size: 10px; color: #606080; line-height: 1.7;
+  background: rgba(61,255,160,0.05); border: 1px solid rgba(61,255,160,0.08);
+  border-left: 3px solid rgba(61,255,160,0.40);
+  border-radius: 3px; padding: 10px 14px; font-size: 10px; color: #7878a0; line-height: 1.7;
 }
 .callout strong { color: #3dffa0; }
 
@@ -281,7 +282,7 @@ function drawVisual(canvasEl, type) {
     }
     ctx.putImageData(imgData,0,0);
     ctx.fillStyle='rgba(0,0,0,0.4)'; ctx.fillRect(0,H*0.6,W,H*0.4);
-    ctx.fillStyle='rgba(61,255,160,0.9)'; ctx.font='8px IBM Plex Mono,monospace'; ctx.textAlign='left';
+    ctx.fillStyle='rgba(61,255,160,0.9)'; ctx.font='9px IBM Plex Mono,monospace'; ctx.textAlign='left';
     ctx.fillText('linear light values — arithmetic is valid here', 4, H-4);
   } else if (type === 'hdr') {
     // Show HDR range — values beyond 1
@@ -309,7 +310,7 @@ function drawVisual(canvasEl, type) {
     ctx.strokeStyle='rgba(255,170,50,0.7)'; ctx.lineWidth=1; ctx.setLineDash([3,3]);
     ctx.beginPath(); ctx.moveTo(dvx,0); ctx.lineTo(dvx,H); ctx.stroke();
     ctx.setLineDash([]);
-    ctx.fillStyle='rgba(255,170,50,0.8)'; ctx.font='7px IBM Plex Mono,monospace'; ctx.textAlign='left';
+    ctx.fillStyle='rgba(255,170,50,0.8)'; ctx.font='8px IBM Plex Mono,monospace'; ctx.textAlign='left';
     ctx.fillText('display ceiling (1.0)', dvx+3, 10);
     ctx.fillText('↑ HDR values beyond display', dvx+3, 20);
   } else if (type === 'tonemap') {
@@ -330,7 +331,7 @@ function drawVisual(canvasEl, type) {
     ctx.putImageData(imgData,0,0);
     ctx.fillStyle='rgba(0,0,0,0.5)';
     ctx.fillRect(0,0,60,12); ctx.fillRect(0,H/2,80,12);
-    ctx.fillStyle='rgba(200,80,80,0.9)'; ctx.font='7px IBM Plex Mono,monospace'; ctx.textAlign='left';
+    ctx.fillStyle='rgba(200,80,80,0.9)'; ctx.font='8px IBM Plex Mono,monospace'; ctx.textAlign='left';
     ctx.fillText('hard clip ↑', 3, 9);
     ctx.fillStyle='rgba(61,255,160,0.9)';
     ctx.fillText('tone mapped ↓', 3, H/2+9);
@@ -347,7 +348,7 @@ function drawVisual(canvasEl, type) {
     }
     ctx.putImageData(imgData,0,0);
     ctx.fillStyle='rgba(0,0,0,0.4)'; ctx.fillRect(0,H*0.7,W,H*0.3);
-    ctx.fillStyle='rgba(180,180,200,0.9)'; ctx.font='8px IBM Plex Mono,monospace'; ctx.textAlign='left';
+    ctx.fillStyle='rgba(180,180,200,0.9)'; ctx.font='9px IBM Plex Mono,monospace'; ctx.textAlign='left';
     ctx.fillText('display decodes sRGB → linear light', 4, H-4);
   }
 }
@@ -407,7 +408,7 @@ function selectStage(id) {
   drawVisual(visCanvas, s.visual);
 }
 
-renderPipeline();
+selectStage('texture');
 </script>
 </body>
 </html>

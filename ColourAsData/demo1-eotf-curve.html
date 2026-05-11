@@ -18,13 +18,13 @@ body {
   font-size: 9px;
   letter-spacing: 0.2em;
   text-transform: uppercase;
-  color: #404060;
+  color: #606070;
   margin-bottom: 6px;
 }
 .heading {
-  font-size: 15px;
+  font-size: 16px;
   font-weight: 400;
-  color: #b0b0c0;
+  color: #c8c8d8;
   margin-bottom: 16px;
   line-height: 1.4;
 }
@@ -52,7 +52,7 @@ input[type=range] {
   -webkit-appearance: none;
   flex: 1;
   height: 2px;
-  background: #232333;
+  background: #26264a;
   border-radius: 1px;
   outline: none;
   cursor: pointer;
@@ -107,12 +107,13 @@ input[type=range]::-moz-range-thumb {
 canvas.strip-canvas { display: block; width: 100%; height: 100%; }
 
 .callout {
-  background: rgba(61,255,160,0.03);
-  border: 1px solid rgba(61,255,160,0.12);
+  background: rgba(61,255,160,0.05);
+  border: 1px solid rgba(61,255,160,0.08);
+  border-left: 3px solid rgba(61,255,160,0.40);
   border-radius: 3px;
   padding: 10px 14px;
   font-size: 10px;
-  color: #707090;
+  color: #8080a0;
   line-height: 1.7;
 }
 .callout strong { color: #3dffa0; }
@@ -257,7 +258,7 @@ function drawCurve(codeVal) {
 
   // Axis tick labels
   ctx.fillStyle = '#404060';
-  ctx.font = `${Math.round(9 * Math.min(1, W/500))}px IBM Plex Mono, monospace`;
+  ctx.font = `${Math.round(10 * Math.min(1, W/500))}px IBM Plex Mono, monospace`;
   ctx.textAlign = 'center';
   for (let i = 0; i <= 4; i++) {
     ctx.fillText(Math.round(i * 63.75), p.l + pw * i / 4, p.t + ph + 13);
@@ -279,7 +280,7 @@ function drawCurve(codeVal) {
 
   // Linear label
   ctx.fillStyle = '#252540';
-  ctx.font = '9px IBM Plex Mono, monospace';
+  ctx.font = '10px IBM Plex Mono, monospace';
   ctx.textAlign = 'left';
   ctx.fillText('linear', p.l + pw * 0.62, p.t + ph - pw * 0.62 + 4);
 }
