@@ -47,7 +47,7 @@ body {
   border-color: var(--sc);
   background: rgba(255,255,255,0.03);
 }
-.stage-icon { font-size: 16px; margin-bottom: 4px; }
+.stage-icon { font-size: 11px; letter-spacing: 0.05em; margin-bottom: 5px; color: var(--sc); font-weight: 500; opacity: 0.75; }
 .stage-name { font-size: 8px; letter-spacing: 0.08em; text-transform: uppercase; color: #606080; line-height: 1.3; }
 .stage.active .stage-name { color: var(--sc); }
 .stage-type {
@@ -106,7 +106,7 @@ body {
   gap: 12px;
 }
 .panel-col {}
-.panel-label { font-size: 8px; letter-spacing: 0.15em; text-transform: uppercase; color: #404060; margin-bottom: 5px; }
+.panel-label { font-size: 8px; letter-spacing: 0.15em; text-transform: uppercase; color: #555575; margin-bottom: 5px; }
 .panel-text { font-size: 10px; color: #8888a8; line-height: 1.7; }
 .panel-text strong { color: #b0b0c8; }
 
@@ -166,7 +166,7 @@ canvas.vis { display: block; width: 100%; height: 100%; }
 const STAGES = [
   {
     id: 'texture',
-    icon: '🖼',
+    icon: '01',
     name: 'Texture',
     type: 'sRGB enc.',
     color: '#5588ff',
@@ -176,7 +176,7 @@ const STAGES = [
   },
   {
     id: 'decode',
-    icon: '⟶',
+    icon: '02',
     name: 'Decode',
     type: 'linear',
     color: '#3dffa0',
@@ -186,7 +186,7 @@ const STAGES = [
   },
   {
     id: 'render',
-    icon: '💡',
+    icon: '03',
     name: 'Render',
     type: 'linear HDR',
     color: '#3dffa0',
@@ -196,7 +196,7 @@ const STAGES = [
   },
   {
     id: 'postprocess',
-    icon: '🔧',
+    icon: '04',
     name: 'Post-process',
     type: 'linear HDR',
     color: '#3dffa0',
@@ -206,7 +206,7 @@ const STAGES = [
   },
   {
     id: 'tonemap',
-    icon: '〜',
+    icon: '05',
     name: 'Tone Map',
     type: 'linear → disp.',
     color: '#ffaa30',
@@ -216,7 +216,7 @@ const STAGES = [
   },
   {
     id: 'encode',
-    icon: '⟶',
+    icon: '06',
     name: 'Encode',
     type: 'sRGB enc.',
     color: '#5588ff',
@@ -226,7 +226,7 @@ const STAGES = [
   },
   {
     id: 'display',
-    icon: '🖥',
+    icon: '07',
     name: 'Display',
     type: 'sRGB enc.',
     color: '#9090c0',
@@ -404,6 +404,7 @@ function selectStage(id) {
       </div>
     </div>
   `;
+  panel.style.borderLeft = `3px solid ${s.color}55`;
   const visCanvas = document.getElementById('visCanvas');
   drawVisual(visCanvas, s.visual);
 }

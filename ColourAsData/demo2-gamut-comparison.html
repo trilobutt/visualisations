@@ -67,7 +67,7 @@ button .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--c);
   line-height: 1.7;
   margin-top: 10px;
 }
-.callout strong { color: #9090c0; }
+.callout strong { color: #3dffa0; }
 
 @media (max-width: 520px) {
   .layout { flex-direction: column; }
@@ -255,7 +255,7 @@ function drawDiagram(gamutKey) {
   ctx.fillRect(0, 0, W, H);
 
   // Grid
-  ctx.strokeStyle = '#141420';
+  ctx.strokeStyle = '#1a1a2c';
   ctx.lineWidth = 1;
   for (let i = 0; i <= 4; i++) {
     const x = p.l + pw * i / 4;

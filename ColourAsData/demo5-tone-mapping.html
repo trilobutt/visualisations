@@ -215,7 +215,7 @@ function drawCurve(shoulderPct, linPct, sceneVal) {
   ctx.fillRect(0, 0, W, H);
 
   // Grid
-  ctx.strokeStyle = '#141420';
+  ctx.strokeStyle = '#1a1a2c';
   ctx.lineWidth = 1;
   for (let i = 0; i <= 4; i++) {
     ctx.beginPath();
@@ -231,7 +231,7 @@ function drawCurve(shoulderPct, linPct, sceneVal) {
   ctx.setLineDash([4,4]);
   ctx.beginPath(); ctx.moveTo(ceilX, p.t); ctx.lineTo(ceilX, p.t+ph); ctx.stroke();
   ctx.setLineDash([]);
-  ctx.fillStyle = '#2a2a4a';
+  ctx.fillStyle = '#3a3a60';
   ctx.font = '9px IBM Plex Mono,monospace';
   ctx.textAlign = 'left';
   ctx.fillText('display ceiling', ceilX+3, p.t+10);
