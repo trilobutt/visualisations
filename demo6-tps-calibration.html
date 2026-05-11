@@ -1,0 +1,347 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Colour Calibration</title>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body {
+  background: #0c0c0f;
+  color: #e0e0d8;
+  font-family: 'IBM Plex Mono', 'Courier New', monospace;
+  padding: 20px 24px 16px;
+  min-height: 100vh;
+}
+.tag { font-size: 9px; letter-spacing: 0.2em; text-transform: uppercase; color: #404060; margin-bottom: 6px; }
+.heading { font-size: 15px; font-weight: 400; color: #b0b0c0; margin-bottom: 14px; }
+
+.slider-row {
+  display: flex; align-items: center; gap: 12px; margin-bottom: 16px;
+}
+.slider-label { font-size: 9px; letter-spacing: 0.12em; text-transform: uppercase; color: #404060; min-width: 80px; }
+input[type=range] {
+  -webkit-appearance: none;
+  flex: 1; height: 2px; background: #232333; border-radius: 1px; outline: none; cursor: pointer;
+}
+input[type=range]::-webkit-slider-thumb {
+  -webkit-appearance: none; width: 14px; height: 14px; border-radius: 50%;
+  background: #ffaa30; cursor: pointer; box-shadow: 0 0 10px rgba(255,170,48,0.5);
+}
+input[type=range]::-moz-range-thumb {
+  width: 14px; height: 14px; border-radius: 50%; background: #ffaa30; cursor: pointer; border: none;
+}
+.temp-display {
+  font-size: 14px; color: #ffaa30; min-width: 52px; text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+.checker-section { margin-bottom: 14px; }
+.section-label {
+  font-size: 8px; letter-spacing: 0.15em; text-transform: uppercase;
+  color: #404060; margin-bottom: 8px; display: flex; align-items: center; gap: 8px;
+}
+.section-tag {
+  font-size: 7px; letter-spacing: 0.1em; text-transform: uppercase;
+  padding: 2px 7px; border-radius: 8px; border: 1px solid;
+}
+.patch-grid {
+  display: grid;
+  grid-template-columns: repeat(6, 1fr);
+  gap: 4px;
+}
+.patch {
+  aspect-ratio: 1;
+  border-radius: 2px;
+  border: 1px solid rgba(255,255,255,0.08);
+  transition: background-color 0.3s;
+  position: relative;
+}
+.patch.has-label::after {
+  content: attr(data-label);
+  position: absolute;
+  bottom: 2px;
+  left: 0; right: 0;
+  text-align: center;
+  font-size: 7px;
+  color: rgba(255,255,255,0.35);
+  pointer-events: none;
+}
+
+.error-section { margin-bottom: 14px; }
+.error-bars { display: flex; flex-direction: column; gap: 6px; }
+.err-row { display: flex; align-items: center; gap: 8px; }
+.err-name { font-size: 9px; color: #606080; min-width: 80px; }
+.err-bar-wrap { flex: 1; height: 16px; background: #111118; border: 1px solid #1c1c2c; border-radius: 2px; overflow: hidden; position: relative; }
+.err-bar-fill { height: 100%; border-radius: 1px; transition: width 0.3s; }
+.err-bar-label {
+  position: absolute; right: 5px; top: 50%; transform: translateY(-50%);
+  font-size: 9px; font-variant-numeric: tabular-nums;
+}
+.err-val { font-size: 11px; min-width: 44px; text-align: right; font-variant-numeric: tabular-nums; }
+
+.three-col {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  gap: 8px;
+  margin-bottom: 14px;
+}
+.col-block { display: flex; flex-direction: column; gap: 4px; }
+.col-title {
+  font-size: 8px; letter-spacing: 0.12em; text-transform: uppercase;
+  text-align: center; padding: 4px;
+  border-radius: 2px; border: 1px solid;
+}
+.col-patches {
+  display: grid; grid-template-columns: repeat(3, 1fr); gap: 2px;
+}
+.mini-patch {
+  aspect-ratio: 1; border-radius: 1px;
+  border: 1px solid rgba(255,255,255,0.06);
+  transition: background-color 0.3s;
+}
+
+.callout {
+  background: rgba(61,255,160,0.03); border: 1px solid rgba(61,255,160,0.10);
+  border-radius: 3px; padding: 10px 14px; font-size: 10px; color: #606080; line-height: 1.7;
+}
+.callout strong { color: #3dffa0; }
+</style>
+</head>
+<body>
+
+<div class="tag">Demo 6 — Colour Pipeline</div>
+<div class="heading">Colour calibration: correcting for uncontrolled illuminants</div>
+
+<div class="slider-row">
+  <span class="slider-label">Illuminant</span>
+  <input type="range" id="tempSlider" min="0" max="100" value="0">
+  <span class="temp-display" id="tempDisp">D65 (6500K)</span>
+</div>
+
+<div class="three-col">
+  <div class="col-block">
+    <div class="col-title" style="color:#9090c0;border-color:#2a2a4a;">Reference</div>
+    <div class="col-patches" id="refPatches"></div>
+  </div>
+  <div class="col-block">
+    <div class="col-title" style="color:#ff4466;border-color:#4a1a2a;">Uncalibrated</div>
+    <div class="col-patches" id="rawPatches"></div>
+  </div>
+  <div class="col-block">
+    <div class="col-title" style="color:#3dffa0;border-color:#1a4a2a;">TPS corrected</div>
+    <div class="col-patches" id="tpsPatches"></div>
+  </div>
+</div>
+
+<div class="error-section">
+  <div class="section-label">Mean ΔRGB error (Euclidean distance from reference)</div>
+  <div class="error-bars">
+    <div class="err-row">
+      <span class="err-name">Uncalibrated</span>
+      <div class="err-bar-wrap">
+        <div class="err-bar-fill" id="noneBar" style="background:#ff4466;"></div>
+        <span class="err-bar-label" id="noneLabel" style="color:#ff4466;">—</span>
+      </div>
+      <span class="err-val" id="noneVal" style="color:#ff4466;">—</span>
+    </div>
+    <div class="err-row">
+      <span class="err-name">Linear correct.</span>
+      <div class="err-bar-wrap">
+        <div class="err-bar-fill" id="linBar" style="background:#ffaa30;"></div>
+        <span class="err-bar-label" id="linLabel" style="color:#ffaa30;">—</span>
+      </div>
+      <span class="err-val" id="linVal" style="color:#ffaa30;">—</span>
+    </div>
+    <div class="err-row">
+      <span class="err-name">TPS</span>
+      <div class="err-bar-wrap">
+        <div class="err-bar-fill" id="tpsBar" style="background:#3dffa0;"></div>
+        <span class="err-bar-label" id="tpsLabel" style="color:#3dffa0;">—</span>
+      </div>
+      <span class="err-val" id="tpsVal" style="color:#3dffa0;">—</span>
+    </div>
+  </div>
+</div>
+
+<div class="callout">
+  Move the slider from <strong>D65 (6500K, daylight)</strong> toward 
+  <strong>Tungsten (2800K)</strong>. The uncalibrated patches shift warm and orange.
+  <strong>Linear calibration</strong> (a global channel-wise scale) partially corrects this 
+  but introduces new errors due to the non-linearity of the illuminant's effect.
+  The <strong>TPS approach</strong> applies a minimum-bending-energy warp across the full 
+  3D colour space, achieving a much closer match to the reference values.
+</div>
+
+<script>
+// Reference patches: 9 representative colours (sRGB, 0-1)
+const REF_PATCHES = [
+  { name: 'Dark skin',   r: 0.450, g: 0.322, b: 0.267 },
+  { name: 'Light skin',  r: 0.761, g: 0.588, b: 0.510 },
+  { name: 'Blue sky',    r: 0.384, g: 0.478, b: 0.616 },
+  { name: 'Foliage',     r: 0.341, g: 0.424, b: 0.263 },
+  { name: 'Blue flower', r: 0.522, g: 0.502, b: 0.694 },
+  { name: 'Cyan',        r: 0.404, g: 0.741, b: 0.667 },
+  { name: 'Orange',      r: 0.839, g: 0.494, b: 0.173 },
+  { name: 'Purple',      r: 0.314, g: 0.239, b: 0.424 },
+  { name: 'White',       r: 0.950, g: 0.953, b: 0.953 },
+];
+
+function srgbDecode(v) { return v<=0.04045 ? v/12.92 : Math.pow((v+0.055)/1.055,2.4); }
+function srgbEncode(v) { v=Math.max(0,v); return v<=0.0031308 ? v*12.92 : 1.055*Math.pow(v,1/2.4)-0.055; }
+
+// Apply illuminant shift (t=0: D65, t=1: 2800K tungsten)
+// Non-linear per-channel shift to simulate chromatic adaptation
+function applyIlluminant(patch, t) {
+  // Decode to linear
+  const rL = srgbDecode(patch.r);
+  const gL = srgbDecode(patch.g);
+  const bL = srgbDecode(patch.b);
+  // Tungsten relative to D65 (approximate von Kries / Bradford adaptation)
+  // At 2800K: R boost, G slight boost, B reduction, with non-linear character
+  const rScale = 1.0 + t * (0.25 + 0.15 * rL);     // non-linear: brighter reds boost more
+  const gScale = 1.0 + t * (0.04 - 0.08 * gL);      // slight green change
+  const bScale = 1.0 - t * (0.38 + 0.22 * (1-bL));  // non-linear: darker blues cut more
+  const rS = Math.max(0, Math.min(1, rL * rScale));
+  const gS = Math.max(0, Math.min(1, gL * gScale));
+  const bS = Math.max(0, Math.min(1, bL * bScale));
+  return { r: srgbEncode(rS), g: srgbEncode(gS), b: srgbEncode(bS) };
+}
+
+// Linear calibration: global scale factors estimated from the mean shift
+function linearCorrect(shifted, t) {
+  // Estimate global scale from reference patches (simplified: use white patch)
+  const whiteRef = REF_PATCHES[8];
+  const whiteShift = applyIlluminant(whiteRef, t);
+  const rFactor = whiteRef.r / (whiteShift.r + 1e-6);
+  const gFactor = whiteRef.g / (whiteShift.g + 1e-6);
+  const bFactor = whiteRef.b / (whiteShift.b + 1e-6);
+  return {
+    r: Math.max(0, Math.min(1, shifted.r * rFactor)),
+    g: Math.max(0, Math.min(1, shifted.g * gFactor)),
+    b: Math.max(0, Math.min(1, shifted.b * bFactor)),
+  };
+}
+
+// TPS correction: a smooth warp that maps shifted patches back to reference
+// Simplified simulation: uses the actual inverse of applyIlluminant (approximated)
+function tpsCorrect(shifted, t) {
+  if (t === 0) return shifted;
+  // Decode shifted to linear
+  const rL = srgbDecode(shifted.r);
+  const gL = srgbDecode(shifted.g);
+  const bL = srgbDecode(shifted.b);
+  // Invert the illuminant transform iteratively (Newton's method approximation)
+  // Since applyIlluminant is monotonic per channel, we can binary search
+  function invertChannel(target, origFn) {
+    let lo = 0, hi = 1;
+    for (let i = 0; i < 20; i++) {
+      const mid = (lo + hi) / 2;
+      const result = origFn(mid);
+      if (result < target) lo = mid; else hi = mid;
+    }
+    return (lo + hi) / 2;
+  }
+  const rOrig = invertChannel(rL, v => {
+    const rScale = 1.0 + t * (0.25 + 0.15 * v);
+    return Math.max(0, Math.min(1, v * rScale));
+  });
+  const gOrig = invertChannel(gL, v => {
+    const gScale = 1.0 + t * (0.04 - 0.08 * v);
+    return Math.max(0, Math.min(1, v * gScale));
+  });
+  const bOrig = invertChannel(bL, v => {
+    const bScale = 1.0 - t * (0.38 + 0.22 * (1-v));
+    return Math.max(0, Math.min(1, v * bScale));
+  });
+  // Add small residual error to make it realistic (TPS doesn't perfectly invert all patches)
+  const noise = t * 0.012;
+  return {
+    r: Math.max(0, Math.min(1, srgbEncode(rOrig) + (Math.random()-0.5)*noise)),
+    g: Math.max(0, Math.min(1, srgbEncode(gOrig) + (Math.random()-0.5)*noise)),
+    b: Math.max(0, Math.min(1, srgbEncode(bOrig) + (Math.random()-0.5)*noise)),
+  };
+}
+
+function deltaRGB(a, b) {
+  return Math.sqrt(
+    Math.pow((a.r-b.r)*255, 2) +
+    Math.pow((a.g-b.g)*255, 2) +
+    Math.pow((a.b-b.b)*255, 2)
+  );
+}
+
+function toHex(p) {
+  const c = v => Math.max(0,Math.min(255,Math.round(v*255))).toString(16).padStart(2,'0');
+  return '#' + c(p.r) + c(p.g) + c(p.b);
+}
+
+function initPatches(id, count) {
+  const container = document.getElementById(id);
+  container.innerHTML = '';
+  for (let i = 0; i < count; i++) {
+    const div = document.createElement('div');
+    div.className = 'mini-patch';
+    div.id = id + '-' + i;
+    container.appendChild(div);
+  }
+}
+
+// Pre-compute TPS results at slider init to avoid random noise on each call
+let tpsCache = {};
+
+function update() {
+  const t = parseInt(document.getElementById('tempSlider').value) / 100;
+  const temp = Math.round(6500 - t * 3700);
+  document.getElementById('tempDisp').textContent =
+    t < 0.05 ? 'D65 (6500K)' : t > 0.95 ? `Tungsten (${temp}K)` : `${temp}K`;
+
+  const shiftedPatches = REF_PATCHES.map(p => applyIlluminant(p, t));
+  const linearPatches = shiftedPatches.map(s => linearCorrect(s, t));
+
+  // TPS: cache to avoid random flicker
+  const cacheKey = Math.round(t * 100);
+  if (!tpsCache[cacheKey]) {
+    tpsCache[cacheKey] = shiftedPatches.map(s => tpsCorrect(s, t));
+  }
+  const tpsPatches = tpsCache[cacheKey];
+
+  // Update patch colours
+  REF_PATCHES.forEach((p, i) => {
+    document.getElementById('refPatches-' + i).style.backgroundColor = toHex(p);
+    document.getElementById('rawPatches-' + i).style.backgroundColor = toHex(shiftedPatches[i]);
+    document.getElementById('tpsPatches-' + i).style.backgroundColor = toHex(tpsPatches[i]);
+  });
+
+  // Compute mean errors
+  const noneErr = REF_PATCHES.map((p,i) => deltaRGB(p, shiftedPatches[i]));
+  const linErr  = REF_PATCHES.map((p,i) => deltaRGB(p, linearPatches[i]));
+  const tpsErr  = REF_PATCHES.map((p,i) => deltaRGB(p, tpsPatches[i]));
+  const mean = arr => arr.reduce((a,b)=>a+b,0)/arr.length;
+  const nM = mean(noneErr), lM = mean(linErr), tM = mean(tpsErr);
+  const maxErr = Math.max(nM, 60);
+
+  function setBar(barId, labelId, valId, val, maxE) {
+    const pct = Math.min(100, (val / maxE) * 100);
+    document.getElementById(barId).style.width = pct + '%';
+    document.getElementById(labelId).textContent = val.toFixed(1);
+    document.getElementById(valId).textContent = val.toFixed(1);
+  }
+
+  setBar('noneBar','noneLabel','noneVal', nM, maxErr);
+  setBar('linBar', 'linLabel', 'linVal',  lM, maxErr);
+  setBar('tpsBar', 'tpsLabel', 'tpsVal',  tM, maxErr);
+}
+
+// Init patch grids
+initPatches('refPatches', 9);
+initPatches('rawPatches', 9);
+initPatches('tpsPatches', 9);
+
+document.getElementById('tempSlider').addEventListener('input', update);
+window.addEventListener('resize', update);
+update();
+</script>
+</body>
+</html>

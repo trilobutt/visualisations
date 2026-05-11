@@ -1,0 +1,145 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Colour Pipeline — Interactive Demos</title>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body {
+  background: #0c0c0f;
+  color: #e0e0d8;
+  font-family: 'IBM Plex Mono', 'Courier New', monospace;
+  padding: 32px 28px;
+  max-width: 900px;
+}
+h1 { font-size: 11px; letter-spacing: 0.2em; text-transform: uppercase; color: #3dffa0; margin-bottom: 6px; }
+.subtitle { font-size: 16px; color: #8888a8; margin-bottom: 32px; font-weight: 300; }
+.demo-list { display: flex; flex-direction: column; gap: 20px; }
+.demo-item {
+  border: 1px solid #1c1c2c;
+  border-radius: 4px;
+  overflow: hidden;
+}
+.demo-header {
+  display: flex; align-items: center; gap: 14px;
+  padding: 14px 16px;
+  background: #111118;
+  border-bottom: 1px solid #1c1c2c;
+}
+.demo-num { font-size: 9px; color: #3dffa0; letter-spacing: 0.1em; }
+.demo-title { font-size: 13px; color: #c0c0d0; flex: 1; }
+.demo-link {
+  font-size: 9px; letter-spacing: 0.08em; text-transform: uppercase;
+  color: #3dffa0; text-decoration: none; border: 1px solid rgba(61,255,160,0.3);
+  padding: 4px 10px; border-radius: 2px; transition: all 0.15s;
+}
+.demo-link:hover { background: rgba(61,255,160,0.08); }
+.embed-code {
+  padding: 10px 14px;
+  font-size: 10px;
+  color: #555580;
+  background: #0c0c0f;
+}
+.embed-code code {
+  display: block;
+  color: #5566aa;
+  word-break: break-all;
+  margin-top: 4px;
+}
+.embed-note { font-size: 9px; color: #303050; margin-top: 20px; line-height: 1.6; }
+.embed-note strong { color: #505070; }
+</style>
+</head>
+<body>
+
+<h1>Colour as Data — Interactive Demos</h1>
+<div class="subtitle">Six self-contained HTML files, designed for iframe embedding</div>
+
+<div class="demo-list">
+
+  <div class="demo-item">
+    <div class="demo-header">
+      <span class="demo-num">01</span>
+      <span class="demo-title">The sRGB Encoding Curve</span>
+      <a href="demo1-eotf-curve.html" class="demo-link" target="_blank">Open ↗</a>
+    </div>
+    <div class="embed-code">
+      WordPress embed — recommended height: 460px
+      <code>&lt;iframe src="/demos/demo1-eotf-curve.html" width="100%" height="460" frameborder="0" scrolling="no"&gt;&lt;/iframe&gt;</code>
+    </div>
+  </div>
+
+  <div class="demo-item">
+    <div class="demo-header">
+      <span class="demo-num">02</span>
+      <span class="demo-title">Colour Gamut Comparison (CIE Diagram)</span>
+      <a href="demo2-gamut-comparison.html" class="demo-link" target="_blank">Open ↗</a>
+    </div>
+    <div class="embed-code">
+      WordPress embed — recommended height: 560px
+      <code>&lt;iframe src="/demos/demo2-gamut-comparison.html" width="100%" height="560" frameborder="0" scrolling="no"&gt;&lt;/iframe&gt;</code>
+    </div>
+  </div>
+
+  <div class="demo-item">
+    <div class="demo-header">
+      <span class="demo-num">03</span>
+      <span class="demo-title">Linear vs sRGB Colour Blending</span>
+      <a href="demo3-linear-blend.html" class="demo-link" target="_blank">Open ↗</a>
+    </div>
+    <div class="embed-code">
+      WordPress embed — recommended height: 480px
+      <code>&lt;iframe src="/demos/demo3-linear-blend.html" width="100%" height="480" frameborder="0" scrolling="no"&gt;&lt;/iframe&gt;</code>
+    </div>
+  </div>
+
+  <div class="demo-item">
+    <div class="demo-header">
+      <span class="demo-num">04</span>
+      <span class="demo-title">The Rendering Pipeline (Clickable Stages)</span>
+      <a href="demo4-pipeline.html" class="demo-link" target="_blank">Open ↗</a>
+    </div>
+    <div class="embed-code">
+      WordPress embed — recommended height: 420px
+      <code>&lt;iframe src="/demos/demo4-pipeline.html" width="100%" height="420" frameborder="0" scrolling="no"&gt;&lt;/iframe&gt;</code>
+    </div>
+  </div>
+
+  <div class="demo-item">
+    <div class="demo-header">
+      <span class="demo-num">05</span>
+      <span class="demo-title">Tone Mapping: Highlight Roll-off vs Hard Clip</span>
+      <a href="demo5-tone-mapping.html" class="demo-link" target="_blank">Open ↗</a>
+    </div>
+    <div class="embed-code">
+      WordPress embed — recommended height: 560px
+      <code>&lt;iframe src="/demos/demo5-tone-mapping.html" width="100%" height="560" frameborder="0" scrolling="no"&gt;&lt;/iframe&gt;</code>
+    </div>
+  </div>
+
+  <div class="demo-item">
+    <div class="demo-header">
+      <span class="demo-num">06</span>
+      <span class="demo-title">Colour Calibration: TPS vs Linear Correction</span>
+      <a href="demo6-tps-calibration.html" class="demo-link" target="_blank">Open ↗</a>
+    </div>
+    <div class="embed-code">
+      WordPress embed — recommended height: 520px
+      <code>&lt;iframe src="/demos/demo6-tps-calibration.html" width="100%" height="520" frameborder="0" scrolling="no"&gt;&lt;/iframe&gt;</code>
+    </div>
+  </div>
+
+</div>
+
+<div class="embed-note">
+  <strong>WordPress deployment:</strong> upload all six .html files to your server (e.g. /wp-content/demos/ or 
+  a static subdirectory). In each post, use a Custom HTML block and paste the iframe code above, 
+  adjusting the src path to match your upload location. Gutenberg strips inline &lt;script&gt; tags 
+  from HTML blocks, so the iframe approach is required. All demos are fully self-contained 
+  (no external dependencies other than a Google Fonts call which degrades gracefully to Courier New).
+</div>
+
+</body>
+</html>

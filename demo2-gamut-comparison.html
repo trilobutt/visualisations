@@ -1,0 +1,369 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Colour Gamut Comparison</title>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body {
+  background: #0c0c0f;
+  color: #e0e0d8;
+  font-family: 'IBM Plex Mono', 'Courier New', monospace;
+  padding: 20px 24px 16px;
+  min-height: 100vh;
+}
+.tag { font-size: 9px; letter-spacing: 0.2em; text-transform: uppercase; color: #404060; margin-bottom: 6px; }
+.heading { font-size: 15px; font-weight: 400; color: #b0b0c0; margin-bottom: 14px; line-height: 1.4; }
+
+.layout { display: flex; gap: 16px; align-items: flex-start; }
+.canvas-col { flex: 1; min-width: 0; }
+.info-col { width: 180px; flex-shrink: 0; display: flex; flex-direction: column; gap: 8px; }
+
+canvas#cie { width: 100%; border: 1px solid #1c1c2c; border-radius: 3px; display: block; }
+
+.btn-group { display: flex; flex-direction: column; gap: 6px; }
+button {
+  background: transparent;
+  border: 1px solid #282838;
+  color: #505070;
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 9px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  padding: 7px 10px;
+  cursor: pointer;
+  border-radius: 2px;
+  text-align: left;
+  transition: all 0.15s;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+button:hover:not(.active) { border-color: #38384a; color: #8888a8; }
+button.active { border-color: var(--c); color: var(--c); background: rgba(255,255,255,0.03); }
+button .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--c); flex-shrink: 0; }
+
+.primaries-panel {
+  background: #111118;
+  border: 1px solid #1c1c2c;
+  border-radius: 3px;
+  padding: 10px;
+}
+.p-title { font-size: 8px; letter-spacing: 0.15em; text-transform: uppercase; color: #404060; margin-bottom: 8px; }
+.p-row { display: flex; justify-content: space-between; margin-bottom: 4px; font-size: 9px; }
+.p-name { color: #606080; }
+.p-coord { color: #9090b0; font-variant-numeric: tabular-nums; }
+
+.callout {
+  background: rgba(61,255,160,0.03);
+  border: 1px solid rgba(61,255,160,0.10);
+  border-radius: 3px;
+  padding: 9px 12px;
+  font-size: 9px;
+  color: #606080;
+  line-height: 1.7;
+  margin-top: 10px;
+}
+.callout strong { color: #9090c0; }
+
+@media (max-width: 520px) {
+  .layout { flex-direction: column; }
+  .info-col { width: 100%; flex-direction: row; flex-wrap: wrap; }
+  .btn-group { flex-direction: row; flex-wrap: wrap; }
+}
+</style>
+</head>
+<body>
+
+<div class="tag">Demo 2 — Colour Pipeline</div>
+<div class="heading">Colour gamut comparison on the CIE 1931 chromaticity diagram</div>
+
+<div class="layout">
+  <div class="canvas-col">
+    <canvas id="cie"></canvas>
+  </div>
+  <div class="info-col">
+    <div class="btn-group">
+      <button id="btnSrgb" class="active" style="--c:#3dffa0;" onclick="selectGamut('srgb')">
+        <span class="dot"></span>sRGB / Rec.709
+      </button>
+      <button id="btnP3" style="--c:#5599ff;" onclick="selectGamut('p3')">
+        <span class="dot"></span>DCI-P3
+      </button>
+      <button id="btnRec2020" style="--c:#ffaa30;" onclick="selectGamut('rec2020')">
+        <span class="dot"></span>Rec.2020
+      </button>
+      <button id="btnAll" style="--c:#c0c0d8;" onclick="selectGamut('all')">
+        <span class="dot"></span>All three
+      </button>
+    </div>
+    <div class="primaries-panel">
+      <div class="p-title">Primaries (xy)</div>
+      <div id="primariesContent"></div>
+    </div>
+  </div>
+</div>
+
+<div class="callout" id="gamutCallout"></div>
+
+<script>
+const GAMUTS = {
+  srgb: {
+    name: 'sRGB / Rec.709',
+    color: '#3dffa0',
+    r: [0.640, 0.330], g: [0.300, 0.600], b: [0.150, 0.060],
+    note: 'Shared primaries between <strong>sRGB</strong> (web/consumer) and <strong>Rec.709</strong> (HDTV). Covers roughly 35% of visible colour. The default for almost all consumer displays and digital cameras.'
+  },
+  p3: {
+    name: 'DCI-P3 / Display P3',
+    color: '#5599ff',
+    r: [0.680, 0.320], g: [0.265, 0.690], b: [0.150, 0.060],
+    note: '<strong>DCI-P3</strong> covers roughly 45% of visible colour — about 26% wider than sRGB. Used in digital cinema and increasingly in consumer devices (iPhone, Mac displays). Red primary shifts significantly toward orange-red.'
+  },
+  rec2020: {
+    name: 'Rec.2020',
+    color: '#ffaa30',
+    r: [0.708, 0.292], g: [0.170, 0.797], b: [0.131, 0.046],
+    note: '<strong>Rec.2020</strong> covers roughly 76% of visible colour. Designed for future ultra-HD displays; current hardware rarely achieves full Rec.2020. Green primary pushes far into the spectral locus.'
+  }
+};
+
+// CIE 1931 2° spectral locus (approximate xy chromaticities)
+const LOCUS = [
+  { nm: 380, x: 0.1741, y: 0.0050 },
+  { nm: 400, x: 0.1733, y: 0.0048 },
+  { nm: 420, x: 0.1669, y: 0.0086 },
+  { nm: 440, x: 0.1528, y: 0.0229 },
+  { nm: 460, x: 0.1323, y: 0.0607 },
+  { nm: 470, x: 0.1082, y: 0.1183 },
+  { nm: 480, x: 0.0741, y: 0.2002 },
+  { nm: 490, x: 0.0453, y: 0.3547 },
+  { nm: 500, x: 0.0082, y: 0.5384 },
+  { nm: 510, x: 0.0139, y: 0.6492 },
+  { nm: 520, x: 0.0743, y: 0.8338 },
+  { nm: 530, x: 0.1547, y: 0.8059 },
+  { nm: 540, x: 0.2296, y: 0.7543 },
+  { nm: 550, x: 0.3016, y: 0.6923 },
+  { nm: 560, x: 0.3731, y: 0.6245 },
+  { nm: 570, x: 0.4441, y: 0.5547 },
+  { nm: 580, x: 0.5125, y: 0.4866 },
+  { nm: 590, x: 0.5752, y: 0.4242 },
+  { nm: 600, x: 0.6270, y: 0.3724 },
+  { nm: 620, x: 0.6915, y: 0.3083 },
+  { nm: 640, x: 0.7190, y: 0.2809 },
+  { nm: 660, x: 0.7300, y: 0.2700 },
+  { nm: 700, x: 0.7347, y: 0.2653 },
+];
+
+const D65 = [0.3127, 0.3290];
+
+// Approximate wavelength to sRGB display colour for locus colouring
+function nmToRGB(nm) {
+  let r, g, b;
+  if (nm >= 380 && nm < 440) { r = (440-nm)/(440-380); g = 0; b = 1; }
+  else if (nm < 490)         { r = 0; g = (nm-440)/(490-440); b = 1; }
+  else if (nm < 510)         { r = 0; g = 1; b = (510-nm)/(510-490); }
+  else if (nm < 580)         { r = (nm-510)/(580-510); g = 1; b = 0; }
+  else if (nm < 645)         { r = 1; g = (645-nm)/(645-580); b = 0; }
+  else                       { r = 1; g = 0; b = 0; }
+  const f = nm < 420 ? 0.3 + 0.7*(nm-380)/40 :
+            nm > 700 ? 0.3 + 0.7*(780-nm)/80 : 1;
+  return [Math.round(255*r*f), Math.round(255*g*f), Math.round(255*b*f)];
+}
+
+let currentGamut = 'srgb';
+let animFrame = null;
+
+const canvas = document.getElementById('cie');
+const ctx = canvas.getContext('2d');
+
+function cieToPx(x, y, bounds, pw, ph) {
+  const nx = (x - bounds.xMin) / (bounds.xMax - bounds.xMin);
+  const ny = 1 - (y - bounds.yMin) / (bounds.yMax - bounds.yMin);
+  return [nx * pw, ny * ph];
+}
+
+function drawDiagram(gamutKey) {
+  const dpr = window.devicePixelRatio || 1;
+  const W = canvas.parentElement.clientWidth;
+  const H = Math.round(W * 0.9);
+  canvas.width = W * dpr;
+  canvas.height = H * dpr;
+  canvas.style.height = H + 'px';
+  ctx.scale(dpr, dpr);
+
+  const p = { l: 28, r: 14, t: 14, b: 28 };
+  const pw = W - p.l - p.r;
+  const ph = H - p.t - p.b;
+  const bounds = { xMin: 0, xMax: 0.80, yMin: 0, yMax: 0.90 };
+
+  function toPx(x, y) {
+    return cieToPx(x, y, bounds, pw, ph).map((v, i) => v + [p.l, p.t][i]);
+  }
+
+  ctx.fillStyle = '#0c0c0f';
+  ctx.fillRect(0, 0, W, H);
+
+  // Grid
+  ctx.strokeStyle = '#141420';
+  ctx.lineWidth = 1;
+  for (let i = 0; i <= 4; i++) {
+    const x = p.l + pw * i / 4;
+    ctx.beginPath(); ctx.moveTo(x, p.t); ctx.lineTo(x, p.t + ph); ctx.stroke();
+    const y = p.t + ph * i / 4;
+    ctx.beginPath(); ctx.moveTo(p.l, y); ctx.lineTo(p.l + pw, y); ctx.stroke();
+  }
+
+  // Fill horseshoe interior
+  ctx.beginPath();
+  LOCUS.forEach((pt, i) => {
+    const [px, py] = toPx(pt.x, pt.y);
+    if (i === 0) ctx.moveTo(px, py); else ctx.lineTo(px, py);
+  });
+  const [lx, ly] = toPx(LOCUS[0].x, LOCUS[0].y);
+  ctx.lineTo(lx, ly);
+  ctx.closePath();
+  ctx.fillStyle = '#111118';
+  ctx.fill();
+
+  // Spectral locus — rainbow stroke
+  for (let i = 0; i < LOCUS.length - 1; i++) {
+    const [r, g, b] = nmToRGB(LOCUS[i].nm);
+    ctx.strokeStyle = `rgba(${r},${g},${b},0.7)`;
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    const [ax, ay] = toPx(LOCUS[i].x, LOCUS[i].y);
+    const [bx, by] = toPx(LOCUS[i+1].x, LOCUS[i+1].y);
+    ctx.moveTo(ax, ay); ctx.lineTo(bx, by); ctx.stroke();
+  }
+  // Line of purples
+  const [first_x, first_y] = toPx(LOCUS[0].x, LOCUS[0].y);
+  const [last_x, last_y] = toPx(LOCUS[LOCUS.length-1].x, LOCUS[LOCUS.length-1].y);
+  ctx.strokeStyle = 'rgba(160,80,160,0.5)';
+  ctx.lineWidth = 1.5;
+  ctx.setLineDash([3, 4]);
+  ctx.beginPath(); ctx.moveTo(last_x, last_y); ctx.lineTo(first_x, first_y); ctx.stroke();
+  ctx.setLineDash([]);
+
+  // Gamut triangles
+  const toShow = gamutKey === 'all' ? ['srgb', 'p3', 'rec2020'] : [gamutKey];
+  toShow.forEach(key => {
+    const g = GAMUTS[key];
+    const [rx, ry] = toPx(g.r[0], g.r[1]);
+    const [gx, gy] = toPx(g.g[0], g.g[1]);
+    const [bx, by] = toPx(g.b[0], g.b[1]);
+
+    // Triangle fill
+    ctx.beginPath();
+    ctx.moveTo(rx, ry); ctx.lineTo(gx, gy); ctx.lineTo(bx, by); ctx.closePath();
+    ctx.fillStyle = hexToRgba(g.color, 0.06);
+    ctx.fill();
+    ctx.strokeStyle = g.color;
+    ctx.lineWidth = 1.5;
+    ctx.stroke();
+
+    // Primary dots
+    [[rx, ry, 'R'], [gx, gy, 'G'], [bx, by, 'B']].forEach(([dx, dy, lbl]) => {
+      ctx.fillStyle = '#0c0c0f';
+      ctx.beginPath(); ctx.arc(dx, dy, 4, 0, Math.PI*2); ctx.fill();
+      ctx.strokeStyle = g.color; ctx.lineWidth = 1.5;
+      ctx.beginPath(); ctx.arc(dx, dy, 4, 0, Math.PI*2); ctx.stroke();
+    });
+  });
+
+  // D65 white point
+  const [wx, wy] = toPx(D65[0], D65[1]);
+  ctx.fillStyle = '#ffffff';
+  ctx.beginPath(); ctx.arc(wx, wy, 3, 0, Math.PI*2); ctx.fill();
+  ctx.strokeStyle = '#666688'; ctx.lineWidth = 1;
+  ctx.beginPath(); ctx.arc(wx, wy, 6, 0, Math.PI*2); ctx.stroke();
+
+  // Axis labels
+  ctx.fillStyle = '#303050';
+  ctx.font = '9px IBM Plex Mono, monospace';
+  ctx.textAlign = 'center';
+  for (let i = 0; i <= 4; i++) {
+    ctx.fillText((i * 0.2).toFixed(1), p.l + pw * i / 4, H - 6);
+  }
+  ctx.textAlign = 'right';
+  for (let i = 0; i <= 4; i++) {
+    ctx.fillText((i * 0.225).toFixed(2), p.l - 4, p.t + ph - ph * i / 4 + 3);
+  }
+  ctx.textAlign = 'center';
+  ctx.fillText('x chromaticity', p.l + pw/2, H - 1);
+  ctx.save();
+  ctx.translate(8, p.t + ph/2);
+  ctx.rotate(-Math.PI/2);
+  ctx.fillText('y chromaticity', 0, 0);
+  ctx.restore();
+
+  // Wavelength labels on locus
+  const labelPts = [460, 500, 520, 560, 600, 640];
+  ctx.font = '8px IBM Plex Mono, monospace';
+  LOCUS.forEach(pt => {
+    if (labelPts.includes(pt.nm)) {
+      const [lx, ly] = toPx(pt.x, pt.y);
+      const [r2, g2, b2] = nmToRGB(pt.nm);
+      ctx.fillStyle = `rgba(${r2},${g2},${b2},0.7)`;
+      ctx.textAlign = pt.x > 0.4 ? 'right' : pt.x < 0.15 ? 'left' : 'center';
+      const off = pt.x > 0.4 ? -8 : 8;
+      ctx.fillText(pt.nm + 'nm', lx + off, ly + 3);
+    }
+  });
+
+  // D65 label
+  ctx.fillStyle = '#555580';
+  ctx.font = '8px IBM Plex Mono, monospace';
+  ctx.textAlign = 'left';
+  ctx.fillText('D65', wx + 8, wy - 4);
+}
+
+function hexToRgba(hex, alpha) {
+  const r = parseInt(hex.slice(1,3),16);
+  const g = parseInt(hex.slice(3,5),16);
+  const b = parseInt(hex.slice(5,7),16);
+  return `rgba(${r},${g},${b},${alpha})`;
+}
+
+function updatePrimaries(key) {
+  const panel = document.getElementById('primariesContent');
+  if (key === 'all') {
+    panel.innerHTML = ['srgb','p3','rec2020'].map(k => {
+      const g = GAMUTS[k];
+      return `<div style="color:${g.color};font-size:8px;margin-bottom:6px;">${g.name}</div>`;
+    }).join('');
+    return;
+  }
+  const g = GAMUTS[key];
+  panel.innerHTML = `
+    <div class="p-row"><span class="p-name" style="color:${g.color};">R</span><span class="p-coord">${g.r[0].toFixed(3)}, ${g.r[1].toFixed(3)}</span></div>
+    <div class="p-row"><span class="p-name" style="color:${g.color};">G</span><span class="p-coord">${g.g[0].toFixed(3)}, ${g.g[1].toFixed(3)}</span></div>
+    <div class="p-row"><span class="p-name" style="color:${g.color};">B</span><span class="p-coord">${g.b[0].toFixed(3)}, ${g.b[1].toFixed(3)}</span></div>
+    <div style="border-top:1px solid #1c1c2c;margin:6px 0;"></div>
+    <div class="p-row"><span class="p-name">D65</span><span class="p-coord">0.313, 0.329</span></div>
+  `;
+}
+
+function selectGamut(key) {
+  currentGamut = key;
+  ['srgb','p3','rec2020','all'].forEach(k => {
+    const btn = document.getElementById('btn' + k.charAt(0).toUpperCase() + k.slice(1));
+    if (btn) btn.classList.toggle('active', k === key);
+  });
+  const callout = document.getElementById('gamutCallout');
+  if (key === 'all') {
+    callout.innerHTML = 'sRGB sits inside P3, which sits inside Rec.2020. All three share the same D65 white point. The triangles' corners (the primaries) are physically realisable only for Rec.2020; sRGB primaries correspond to points on or near common display phosphors.';
+  } else {
+    callout.innerHTML = GAMUTS[key].note;
+  }
+  updatePrimaries(key);
+  drawDiagram(key);
+}
+
+window.addEventListener('resize', () => drawDiagram(currentGamut));
+selectGamut('srgb');
+</script>
+</body>
+</html>

@@ -1,0 +1,361 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>The Encoding Curve</title>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body {
+  background: #0c0c0f;
+  color: #e0e0d8;
+  font-family: 'IBM Plex Mono', 'Courier New', monospace;
+  padding: 20px 24px 16px;
+  min-height: 100vh;
+}
+.tag {
+  font-size: 9px;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: #404060;
+  margin-bottom: 6px;
+}
+.heading {
+  font-size: 15px;
+  font-weight: 400;
+  color: #b0b0c0;
+  margin-bottom: 16px;
+  line-height: 1.4;
+}
+canvas#curve {
+  width: 100%;
+  border: 1px solid #1c1c2c;
+  border-radius: 3px;
+  display: block;
+  margin-bottom: 16px;
+}
+.slider-row {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  margin-bottom: 14px;
+}
+.slider-label {
+  font-size: 9px;
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+  color: #404060;
+  min-width: 72px;
+}
+input[type=range] {
+  -webkit-appearance: none;
+  flex: 1;
+  height: 2px;
+  background: #232333;
+  border-radius: 1px;
+  outline: none;
+  cursor: pointer;
+}
+input[type=range]::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  width: 14px; height: 14px;
+  border-radius: 50%;
+  background: #3dffa0;
+  cursor: pointer;
+  box-shadow: 0 0 10px rgba(61,255,160,0.5);
+}
+input[type=range]::-moz-range-thumb {
+  width: 14px; height: 14px;
+  border-radius: 50%;
+  background: #3dffa0;
+  cursor: pointer;
+  border: none;
+}
+.readouts {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  gap: 8px;
+  margin-bottom: 14px;
+}
+.readout {
+  background: #111118;
+  border: 1px solid #1c1c2c;
+  border-radius: 3px;
+  padding: 10px 12px;
+}
+.r-label {
+  font-size: 8px;
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+  color: #404060;
+  margin-bottom: 5px;
+}
+.r-value {
+  font-size: 20px;
+  font-weight: 400;
+  font-variant-numeric: tabular-nums;
+}
+.r-value.green { color: #3dffa0; }
+.r-value.dim { color: #666688; }
+.r-note { font-size: 9px; color: #404060; margin-top: 3px; }
+
+.strips { display: flex; flex-direction: column; gap: 6px; margin-bottom: 12px; }
+.strip-row { display: flex; align-items: center; gap: 10px; }
+.strip-label-sm { font-size: 9px; color: #404060; min-width: 64px; text-align: right; }
+.strip { flex: 1; height: 24px; border-radius: 2px; border: 1px solid #1c1c2c; overflow: hidden; }
+canvas.strip-canvas { display: block; width: 100%; height: 100%; }
+
+.callout {
+  background: rgba(61,255,160,0.03);
+  border: 1px solid rgba(61,255,160,0.12);
+  border-radius: 3px;
+  padding: 10px 14px;
+  font-size: 10px;
+  color: #707090;
+  line-height: 1.7;
+}
+.callout strong { color: #3dffa0; }
+</style>
+</head>
+<body>
+
+<div class="tag">Demo 1 — Colour Pipeline</div>
+<div class="heading">The sRGB encoding curve: code value vs. actual luminance</div>
+
+<canvas id="curve"></canvas>
+
+<div class="slider-row">
+  <span class="slider-label">Code value</span>
+  <input type="range" id="slider" min="0" max="255" value="128">
+  <span class="r-value green" id="codeDisp" style="font-size:18px;min-width:40px;text-align:right;">128</span>
+</div>
+
+<div class="readouts">
+  <div class="readout">
+    <div class="r-label">Code value</div>
+    <div class="r-value green" id="rCode">128</div>
+    <div class="r-note">/ 255</div>
+  </div>
+  <div class="readout">
+    <div class="r-label">sRGB Luminance</div>
+    <div class="r-value green" id="rLum">21.6%</div>
+    <div class="r-note">actual light output</div>
+  </div>
+  <div class="readout">
+    <div class="r-label">Naïve expectation</div>
+    <div class="r-value dim" id="rLin">50.2%</div>
+    <div class="r-note">if encoding were linear</div>
+  </div>
+</div>
+
+<div class="strips">
+  <div class="strip-row">
+    <span class="strip-label-sm" style="font-size:8px;">sRGB gradient</span>
+    <div class="strip"><canvas class="strip-canvas" id="srgbStrip"></canvas></div>
+  </div>
+  <div class="strip-row">
+    <span class="strip-label-sm" style="font-size:8px;">linear gradient</span>
+    <div class="strip"><canvas class="strip-canvas" id="linStrip"></canvas></div>
+  </div>
+</div>
+
+<div class="callout">
+  Code value <strong id="cCallout">128</strong> is the midpoint of the 8-bit range.
+  The sRGB transfer function decodes it to <strong id="lumCallout">21.6%</strong> luminance.
+  Arithmetic on encoded values treats it as <strong id="linCallout">50.2%</strong> — an error of
+  <strong id="errCallout">28.6</strong> percentage points. The bottom strip shows what a
+  perceptually correct (linear) midpoint actually looks like.
+</div>
+
+<script>
+const curveCanvas = document.getElementById('curve');
+const ctx = curveCanvas.getContext('2d');
+
+function srgbDecode(v) {
+  if (v <= 0.04045) return v / 12.92;
+  return Math.pow((v + 0.055) / 1.055, 2.4);
+}
+function srgbEncode(v) {
+  if (v <= 0.0031308) return v * 12.92;
+  return 1.055 * Math.pow(v, 1 / 2.4) - 0.055;
+}
+
+function drawCurve(codeVal) {
+  const dpr = window.devicePixelRatio || 1;
+  const W = curveCanvas.parentElement.clientWidth;
+  const H = Math.round(W * 0.48);
+  curveCanvas.width = W * dpr;
+  curveCanvas.height = H * dpr;
+  curveCanvas.style.height = H + 'px';
+  ctx.scale(dpr, dpr);
+
+  const p = { l: 48, r: 16, t: 14, b: 36 };
+  const pw = W - p.l - p.r;
+  const ph = H - p.t - p.b;
+
+  ctx.fillStyle = '#0c0c0f';
+  ctx.fillRect(0, 0, W, H);
+
+  // Grid lines
+  ctx.strokeStyle = '#181828';
+  ctx.lineWidth = 1;
+  for (let i = 0; i <= 4; i++) {
+    ctx.beginPath();
+    ctx.moveTo(p.l, p.t + ph * i / 4);
+    ctx.lineTo(p.l + pw, p.t + ph * i / 4);
+    ctx.stroke();
+    ctx.beginPath();
+    ctx.moveTo(p.l + pw * i / 4, p.t);
+    ctx.lineTo(p.l + pw * i / 4, p.t + ph);
+    ctx.stroke();
+  }
+
+  // Linear reference (diagonal)
+  ctx.strokeStyle = '#252540';
+  ctx.lineWidth = 1;
+  ctx.setLineDash([3, 5]);
+  ctx.beginPath();
+  ctx.moveTo(p.l, p.t + ph);
+  ctx.lineTo(p.l + pw, p.t);
+  ctx.stroke();
+  ctx.setLineDash([]);
+
+  // sRGB EOTF curve (code→luminance)
+  ctx.strokeStyle = '#3dffa0';
+  ctx.lineWidth = 2;
+  ctx.beginPath();
+  for (let i = 0; i <= 512; i++) {
+    const v = i / 512;
+    const lum = srgbDecode(v);
+    const px = p.l + v * pw;
+    const py = p.t + ph - lum * ph;
+    if (i === 0) ctx.moveTo(px, py); else ctx.lineTo(px, py);
+  }
+  ctx.stroke();
+
+  // Current position
+  const cv = codeVal / 255;
+  const lum = srgbDecode(cv);
+  const px = p.l + cv * pw;
+  const py = p.t + ph - lum * ph;
+
+  // Drop lines
+  ctx.strokeStyle = 'rgba(61,255,160,0.2)';
+  ctx.lineWidth = 1;
+  ctx.setLineDash([2, 4]);
+  ctx.beginPath(); ctx.moveTo(px, py); ctx.lineTo(px, p.t + ph); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(px, py); ctx.lineTo(p.l, py); ctx.stroke();
+  ctx.setLineDash([]);
+
+  // Point dot
+  ctx.fillStyle = '#0c0c0f';
+  ctx.beginPath(); ctx.arc(px, py, 5, 0, Math.PI * 2); ctx.fill();
+  ctx.strokeStyle = '#3dffa0';
+  ctx.lineWidth = 2;
+  ctx.beginPath(); ctx.arc(px, py, 5, 0, Math.PI * 2); ctx.stroke();
+
+  // Axis tick labels
+  ctx.fillStyle = '#404060';
+  ctx.font = `${Math.round(9 * Math.min(1, W/500))}px IBM Plex Mono, monospace`;
+  ctx.textAlign = 'center';
+  for (let i = 0; i <= 4; i++) {
+    ctx.fillText(Math.round(i * 63.75), p.l + pw * i / 4, p.t + ph + 13);
+  }
+  ctx.textAlign = 'right';
+  for (let i = 0; i <= 4; i++) {
+    ctx.fillText((i * 25) + '%', p.l - 6, p.t + ph - ph * i / 4 + 3);
+  }
+
+  // Axis labels
+  ctx.fillStyle = '#303050';
+  ctx.textAlign = 'center';
+  ctx.fillText('code value  (0 – 255)', p.l + pw / 2, H - 4);
+  ctx.save();
+  ctx.translate(10, p.t + ph / 2);
+  ctx.rotate(-Math.PI / 2);
+  ctx.fillText('luminance', 0, 0);
+  ctx.restore();
+
+  // Linear label
+  ctx.fillStyle = '#252540';
+  ctx.font = '9px IBM Plex Mono, monospace';
+  ctx.textAlign = 'left';
+  ctx.fillText('linear', p.l + pw * 0.62, p.t + ph - pw * 0.62 + 4);
+}
+
+function drawStrips(codeVal) {
+  ['srgbStrip', 'linStrip'].forEach(id => {
+    const sc = document.getElementById(id);
+    const isLinear = id === 'linStrip';
+    const W = sc.parentElement.clientWidth;
+    const H = sc.parentElement.clientHeight;
+    sc.width = W; sc.height = H;
+    const sctx = sc.getContext('2d');
+
+    if (!isLinear) {
+      // sRGB gradient: CSS default behavior (already sRGB-encoded)
+      const grad = sctx.createLinearGradient(0, 0, W, 0);
+      grad.addColorStop(0, '#000');
+      grad.addColorStop(1, '#fff');
+      sctx.fillStyle = grad;
+      sctx.fillRect(0, 0, W, H);
+    } else {
+      // Linear gradient: decoded, averaged linearly, then re-encoded for display
+      const imgData = sctx.createImageData(W, H);
+      for (let x = 0; x < W; x++) {
+        const t = x / (W - 1);
+        // Linear blend: 0 to 1 in luminance, then sRGB encode for display
+        const linVal = t;
+        const srgbVal = Math.round(srgbEncode(linVal) * 255);
+        for (let y = 0; y < H; y++) {
+          const i = (y * W + x) * 4;
+          imgData.data[i] = srgbVal;
+          imgData.data[i+1] = srgbVal;
+          imgData.data[i+2] = srgbVal;
+          imgData.data[i+3] = 255;
+        }
+      }
+      sctx.putImageData(imgData, 0, 0);
+    }
+
+    // Marker at current value
+    const mx = (codeVal / 255) * W;
+    sctx.strokeStyle = '#3dffa0';
+    sctx.lineWidth = 2;
+    sctx.beginPath(); sctx.moveTo(mx, 0); sctx.lineTo(mx, H); sctx.stroke();
+    // Small triangle marker at top
+    sctx.fillStyle = '#3dffa0';
+    sctx.beginPath();
+    sctx.moveTo(mx, 0); sctx.lineTo(mx - 4, -6); sctx.lineTo(mx + 4, -6);
+    sctx.closePath(); sctx.fill();
+  });
+}
+
+function update() {
+  const cv = parseInt(document.getElementById('slider').value);
+  const v = cv / 255;
+  const lum = srgbDecode(v);
+  const lumPct = (lum * 100).toFixed(1);
+  const linPct = (v * 100).toFixed(1);
+  const err = Math.abs(v * 100 - lum * 100).toFixed(1);
+
+  document.getElementById('codeDisp').textContent = cv;
+  document.getElementById('rCode').textContent = cv;
+  document.getElementById('rLum').textContent = lumPct + '%';
+  document.getElementById('rLin').textContent = linPct + '%';
+  document.getElementById('cCallout').textContent = cv;
+  document.getElementById('lumCallout').textContent = lumPct + '%';
+  document.getElementById('linCallout').textContent = linPct + '%';
+  document.getElementById('errCallout').textContent = err;
+
+  drawCurve(cv);
+  drawStrips(cv);
+}
+
+document.getElementById('slider').addEventListener('input', update);
+window.addEventListener('resize', update);
+update();
+</script>
+</body>
+</html>

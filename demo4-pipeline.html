@@ -1,0 +1,413 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>The Rendering Pipeline</title>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body {
+  background: #0c0c0f;
+  color: #e0e0d8;
+  font-family: 'IBM Plex Mono', 'Courier New', monospace;
+  padding: 20px 24px 16px;
+  min-height: 100vh;
+}
+.tag { font-size: 9px; letter-spacing: 0.2em; text-transform: uppercase; color: #404060; margin-bottom: 6px; }
+.heading { font-size: 15px; font-weight: 400; color: #b0b0c0; margin-bottom: 18px; }
+
+.pipeline {
+  display: flex;
+  align-items: center;
+  gap: 0;
+  margin-bottom: 16px;
+  overflow-x: auto;
+  padding-bottom: 4px;
+}
+.stage {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0;
+  cursor: pointer;
+  flex-shrink: 0;
+}
+.stage-box {
+  width: 72px;
+  border: 1px solid #282838;
+  border-radius: 3px;
+  padding: 8px 6px 7px;
+  text-align: center;
+  transition: all 0.15s;
+  background: #111118;
+}
+.stage:hover .stage-box,
+.stage.active .stage-box {
+  border-color: var(--sc);
+  background: rgba(255,255,255,0.03);
+}
+.stage-icon { font-size: 16px; margin-bottom: 4px; }
+.stage-name { font-size: 8px; letter-spacing: 0.08em; text-transform: uppercase; color: #606080; line-height: 1.3; }
+.stage.active .stage-name { color: var(--sc); }
+.stage-type {
+  font-size: 7px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  margin-top: 5px;
+  padding: 2px 5px;
+  border-radius: 10px;
+  border: 1px solid #1c1c2c;
+  color: #404060;
+}
+.stage.active .stage-type { border-color: var(--sc); color: var(--sc); }
+
+.connector {
+  width: 20px;
+  height: 1px;
+  background: #282838;
+  flex-shrink: 0;
+  position: relative;
+}
+.connector::after {
+  content: '';
+  position: absolute;
+  right: -4px;
+  top: -3px;
+  border: 4px solid transparent;
+  border-left-color: #282838;
+}
+
+.detail-panel {
+  background: #111118;
+  border: 1px solid #1c1c2c;
+  border-radius: 3px;
+  padding: 16px;
+  margin-bottom: 14px;
+  min-height: 140px;
+  transition: all 0.2s;
+}
+.panel-header {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  margin-bottom: 12px;
+  border-bottom: 1px solid #1c1c2c;
+  padding-bottom: 10px;
+}
+.panel-title { font-size: 13px; font-weight: 500; }
+.panel-tag {
+  font-size: 8px; letter-spacing: 0.12em; text-transform: uppercase;
+  padding: 2px 7px; border-radius: 10px; border: 1px solid; margin-left: auto;
+}
+.panel-body {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+.panel-col {}
+.panel-label { font-size: 8px; letter-spacing: 0.15em; text-transform: uppercase; color: #404060; margin-bottom: 5px; }
+.panel-text { font-size: 10px; color: #8888a8; line-height: 1.7; }
+.panel-text strong { color: #b0b0c8; }
+
+.data-visual {
+  border: 1px solid #1c1c2c;
+  border-radius: 2px;
+  overflow: hidden;
+  height: 48px;
+  position: relative;
+}
+canvas.vis { display: block; width: 100%; height: 100%; }
+.vis-overlay {
+  position: absolute;
+  bottom: 4px;
+  left: 0;
+  right: 0;
+  text-align: center;
+  font-size: 8px;
+  color: rgba(255,255,255,0.4);
+  pointer-events: none;
+}
+
+.callout {
+  background: rgba(61,255,160,0.03); border: 1px solid rgba(61,255,160,0.10);
+  border-radius: 3px; padding: 10px 14px; font-size: 10px; color: #606080; line-height: 1.7;
+}
+.callout strong { color: #3dffa0; }
+
+@media (max-width: 480px) {
+  .panel-body { grid-template-columns: 1fr; }
+  .stage-box { width: 60px; }
+  .stage-name { font-size: 7px; }
+}
+</style>
+</head>
+<body>
+
+<div class="tag">Demo 4 — Colour Pipeline</div>
+<div class="heading">The rendering pipeline: data state at each stage</div>
+
+<div class="pipeline" id="pipeline"></div>
+
+<div class="detail-panel" id="detail">
+  <div style="font-size:10px;color:#404060;text-align:center;padding-top:40px;">
+    Click a stage to see what happens to the data there
+  </div>
+</div>
+
+<div class="callout">
+  <strong>Key principle:</strong> encoding is stripped at the earliest opportunity, all mathematics occurs 
+  in linear light, and encoding is reapplied only at the final step before the display sees the data.
+  Every handoff between stages where this discipline is violated produces a colour error.
+</div>
+
+<script>
+const STAGES = [
+  {
+    id: 'texture',
+    icon: '🖼',
+    name: 'Texture',
+    type: 'sRGB enc.',
+    color: '#5588ff',
+    desc: 'Image assets arrive as 8-bit files (PNG, JPEG, TIFF). They are sRGB-encoded: the pixel values are <strong>not</strong> proportional to light. Code value 128 ≈ 22% luminance. Mip-maps cannot be built correctly from encoded values.',
+    dataState: 'sRGB-encoded 8-bit integer values. Range 0–255.',
+    visual: 'encoded'
+  },
+  {
+    id: 'decode',
+    icon: '⟶',
+    name: 'Decode',
+    type: 'linear',
+    color: '#3dffa0',
+    desc: 'The sRGB transfer function is inverted: each channel is decoded to a linear luminance value proportional to physical light. Code 128 → 21.6% luminance. Mip-map filtering can now produce correct averages.',
+    dataState: 'Linear floating-point values. Range 0.0–1.0 (or higher for HDR textures).',
+    visual: 'linear'
+  },
+  {
+    id: 'render',
+    icon: '💡',
+    name: 'Render',
+    type: 'linear HDR',
+    color: '#3dffa0',
+    desc: 'All lighting, shadowing, reflection and compositing calculations run on linear values. Light is additive: doubling a value doubles the luminance. HDR values extend well beyond 1.0 — a bright sky might be 10–100 in scene units.',
+    dataState: 'Linear floating-point, full HDR. Values may reach 10–1000+.',
+    visual: 'hdr'
+  },
+  {
+    id: 'postprocess',
+    icon: '🔧',
+    name: 'Post-process',
+    type: 'linear HDR',
+    color: '#3dffa0',
+    desc: 'Effects like bloom, depth of field, exposure adjustment, and white balance operate on linear HDR data. Post-process operations applied after tone mapping work on encoded display data — physically incorrect for most operations.',
+    dataState: 'Still linear floating-point. Post-process materials injected here.',
+    visual: 'hdr'
+  },
+  {
+    id: 'tonemap',
+    icon: '〜',
+    name: 'Tone Map',
+    type: 'linear → disp.',
+    color: '#ffaa30',
+    desc: 'The wide HDR range is compressed into the 0–1 display range using an S-shaped curve. Highlights roll off gradually rather than clipping. Exposure, white balance, and colour grading are applied here.',
+    dataState: 'Linear in, display-range (0–1) linear out. Encoding applied in next step.',
+    visual: 'tonemap'
+  },
+  {
+    id: 'encode',
+    icon: '⟶',
+    name: 'Encode',
+    type: 'sRGB enc.',
+    color: '#5588ff',
+    desc: 'The sRGB transfer function is applied to the display-range linear values, producing gamma-encoded pixel values ready for the display. This step runs once, immediately before display. Applied twice = double-gamma error.',
+    dataState: 'sRGB-encoded, display-referred. Code value 128 = 21.6% luminance.',
+    visual: 'encoded'
+  },
+  {
+    id: 'display',
+    icon: '🖥',
+    name: 'Display',
+    type: 'sRGB enc.',
+    color: '#9090c0',
+    desc: 'The display hardware decodes the sRGB signal using its built-in EOTF, converting code values to emitted light. An sRGB display paired with sRGB-encoded data produces linear light output. Mismatched encoding produces incorrect brightness.',
+    dataState: 'Display hardware applies inverse gamma. Light output is linear.',
+    visual: 'display'
+  }
+];
+
+function srgbDecode(v) { return v <= 0.04045 ? v/12.92 : Math.pow((v+0.055)/1.055,2.4); }
+function srgbEncode(v) { v = Math.max(0,v); return v <= 0.0031308 ? v*12.92 : 1.055*Math.pow(v,1/2.4)-0.055; }
+
+function drawVisual(canvasEl, type) {
+  const W = canvasEl.parentElement.clientWidth;
+  const H = 48;
+  canvasEl.width = W; canvasEl.height = H;
+  const ctx = canvasEl.getContext('2d');
+
+  if (type === 'encoded') {
+    // sRGB encoded gradient
+    const grad = ctx.createLinearGradient(0,0,W,0);
+    grad.addColorStop(0,'#000'); grad.addColorStop(1,'#fff');
+    ctx.fillStyle = grad; ctx.fillRect(0,0,W,H);
+    // Overlay showing code value vs luminance
+    ctx.fillStyle = 'rgba(0,0,0,0.5)'; ctx.fillRect(0,H/2,W,H/2);
+    // Linear reference line
+    ctx.strokeStyle = 'rgba(100,100,200,0.6)'; ctx.lineWidth = 1;
+    ctx.beginPath();
+    for (let x=0;x<W;x++) {
+      const v = x/W;
+      const y = H/2 - (v * H/2);
+      if (x===0) ctx.moveTo(x,y+H/2); else ctx.lineTo(x,y+H/2);
+    }
+    ctx.stroke();
+    ctx.strokeStyle = 'rgba(61,255,160,0.6)';
+    ctx.beginPath();
+    for (let x=0;x<W;x++) {
+      const v = x/W;
+      const y = H/2 - (srgbDecode(v) * H/2);
+      if (x===0) ctx.moveTo(x,y+H/2); else ctx.lineTo(x,y+H/2);
+    }
+    ctx.stroke();
+  } else if (type === 'linear') {
+    // Linear gradient (correct)
+    const imgData = ctx.createImageData(W,H);
+    for (let x=0;x<W;x++) {
+      const v = x/(W-1);
+      const encoded = Math.round(srgbEncode(v)*255);
+      for (let y=0;y<H;y++) {
+        const i=(y*W+x)*4;
+        imgData.data[i]=encoded; imgData.data[i+1]=encoded; imgData.data[i+2]=encoded; imgData.data[i+3]=255;
+      }
+    }
+    ctx.putImageData(imgData,0,0);
+    ctx.fillStyle='rgba(0,0,0,0.4)'; ctx.fillRect(0,H*0.6,W,H*0.4);
+    ctx.fillStyle='rgba(61,255,160,0.9)'; ctx.font='8px IBM Plex Mono,monospace'; ctx.textAlign='left';
+    ctx.fillText('linear light values — arithmetic is valid here', 4, H-4);
+  } else if (type === 'hdr') {
+    // Show HDR range — values beyond 1
+    const imgData = ctx.createImageData(W,H);
+    for (let x=0;x<W;x++) {
+      const v = (x/(W-1)) * 4; // 0 to 4 HDR range
+      const encoded = Math.min(255, Math.round(srgbEncode(Math.min(1,v))*255));
+      const isOOB = v > 1;
+      for (let y=0;y<H;y++) {
+        const i=(y*W+x)*4;
+        if (isOOB && y < H/3) {
+          // Show HDR excess as orange
+          const intensity = Math.min(1,(v-1)/3);
+          imgData.data[i]   = Math.round(255*intensity);
+          imgData.data[i+1] = Math.round(120*intensity);
+          imgData.data[i+2] = 0;
+        } else {
+          imgData.data[i]=encoded; imgData.data[i+1]=encoded; imgData.data[i+2]=encoded;
+        }
+        imgData.data[i+3]=255;
+      }
+    }
+    ctx.putImageData(imgData,0,0);
+    const dvx = W/4;
+    ctx.strokeStyle='rgba(255,170,50,0.7)'; ctx.lineWidth=1; ctx.setLineDash([3,3]);
+    ctx.beginPath(); ctx.moveTo(dvx,0); ctx.lineTo(dvx,H); ctx.stroke();
+    ctx.setLineDash([]);
+    ctx.fillStyle='rgba(255,170,50,0.8)'; ctx.font='7px IBM Plex Mono,monospace'; ctx.textAlign='left';
+    ctx.fillText('display ceiling (1.0)', dvx+3, 10);
+    ctx.fillText('↑ HDR values beyond display', dvx+3, 20);
+  } else if (type === 'tonemap') {
+    // Reinhard-like: before (top half) vs after (bottom half)
+    const imgData = ctx.createImageData(W,H);
+    for (let x=0;x<W;x++) {
+      const v = (x/(W-1)) * 4;
+      const tonemapped = v / (v + 1); // Reinhard
+      const clipped = Math.min(1, v);
+      const encTone = Math.round(srgbEncode(tonemapped)*255);
+      const encClip = Math.round(srgbEncode(clipped)*255);
+      for (let y=0;y<H;y++) {
+        const i=(y*W+x)*4;
+        const enc = y < H/2 ? encClip : encTone;
+        imgData.data[i]=enc; imgData.data[i+1]=enc; imgData.data[i+2]=enc; imgData.data[i+3]=255;
+      }
+    }
+    ctx.putImageData(imgData,0,0);
+    ctx.fillStyle='rgba(0,0,0,0.5)';
+    ctx.fillRect(0,0,60,12); ctx.fillRect(0,H/2,80,12);
+    ctx.fillStyle='rgba(200,80,80,0.9)'; ctx.font='7px IBM Plex Mono,monospace'; ctx.textAlign='left';
+    ctx.fillText('hard clip ↑', 3, 9);
+    ctx.fillStyle='rgba(61,255,160,0.9)';
+    ctx.fillText('tone mapped ↓', 3, H/2+9);
+  } else if (type === 'display') {
+    // Show calibrated display output — linear light
+    const imgData = ctx.createImageData(W,H);
+    for (let x=0;x<W;x++) {
+      const v = srgbDecode(x/(W-1)); // display applies inverse EOTF → linear
+      const c = Math.round(v*255);
+      for (let y=0;y<H;y++) {
+        const i=(y*W+x)*4;
+        imgData.data[i]=c; imgData.data[i+1]=c; imgData.data[i+2]=c; imgData.data[i+3]=255;
+      }
+    }
+    ctx.putImageData(imgData,0,0);
+    ctx.fillStyle='rgba(0,0,0,0.4)'; ctx.fillRect(0,H*0.7,W,H*0.3);
+    ctx.fillStyle='rgba(180,180,200,0.9)'; ctx.font='8px IBM Plex Mono,monospace'; ctx.textAlign='left';
+    ctx.fillText('display decodes sRGB → linear light', 4, H-4);
+  }
+}
+
+let activeStage = null;
+
+function renderPipeline() {
+  const container = document.getElementById('pipeline');
+  container.innerHTML = '';
+  STAGES.forEach((s, i) => {
+    const el = document.createElement('div');
+    el.className = 'stage' + (activeStage === s.id ? ' active' : '');
+    el.style.setProperty('--sc', s.color);
+    el.innerHTML = `
+      <div class="stage-box">
+        <div class="stage-icon">${s.icon}</div>
+        <div class="stage-name">${s.name}</div>
+      </div>
+      <div class="stage-type">${s.type}</div>
+    `;
+    el.addEventListener('click', () => selectStage(s.id));
+    container.appendChild(el);
+    if (i < STAGES.length - 1) {
+      const conn = document.createElement('div');
+      conn.className = 'connector';
+      container.appendChild(conn);
+    }
+  });
+}
+
+function selectStage(id) {
+  activeStage = id;
+  renderPipeline();
+  const s = STAGES.find(st => st.id === id);
+  const panel = document.getElementById('detail');
+  panel.innerHTML = `
+    <div class="panel-header">
+      <div class="panel-title" style="color:${s.color}">${s.icon} ${s.name}</div>
+      <div class="panel-tag" style="color:${s.color};border-color:${s.color};">${s.type}</div>
+    </div>
+    <div class="panel-body">
+      <div class="panel-col">
+        <div class="panel-label">What happens here</div>
+        <div class="panel-text">${s.desc}</div>
+      </div>
+      <div class="panel-col">
+        <div class="panel-label">Data state</div>
+        <div class="panel-text" style="margin-bottom:8px;">${s.dataState}</div>
+        <div class="data-visual">
+          <canvas class="vis" id="visCanvas"></canvas>
+          <div class="vis-overlay">${s.type}</div>
+        </div>
+      </div>
+    </div>
+  `;
+  const visCanvas = document.getElementById('visCanvas');
+  drawVisual(visCanvas, s.visual);
+}
+
+renderPipeline();
+</script>
+</body>
+</html>
